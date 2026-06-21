@@ -13,6 +13,16 @@ class EditorViewModel extends ChangeNotifier {
   String? _selectedItemId;
   String? get selectedItemId => _selectedItemId;
 
+  Size _canvasSize = Size.zero;
+  Size get canvasSize => _canvasSize;
+
+  void setCanvasSize(Size size) {
+    if (_canvasSize != size) {
+      _canvasSize = size;
+      // notifyListeners(); // Usually not needed to rebuild on size change unless reacting to it
+    }
+  }
+
   WatermarkItem? get selectedItem {
     try {
       return _watermarkItems.firstWhere((item) => item.id == _selectedItemId);

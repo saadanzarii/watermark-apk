@@ -14,14 +14,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => EditorViewModel()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => EditorViewModel())],
       child: MaterialApp(
         title: 'Watermark Studio',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system, 
+        themeMode: ThemeMode.system,
+        debugShowCheckedModeBanner: false,
         home: const HomeScreen(),
       ),
     );

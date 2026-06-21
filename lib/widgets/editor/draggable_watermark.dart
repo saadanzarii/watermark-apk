@@ -20,9 +20,8 @@ class DraggableWatermark extends StatefulWidget {
 }
 
 class _DraggableWatermarkState extends State<DraggableWatermark> {
-  double _baseScale = 1.0;
-  double _baseRotation = 0.0;
-  Offset _basePosition = Offset.zero;
+  double? _startScale;
+  double? _startRotation;
 
   @override
   Widget build(BuildContext context) {
@@ -31,51 +30,106 @@ class _DraggableWatermarkState extends State<DraggableWatermark> {
     return Positioned(
       left: widget.item.position.dx,
       top: widget.item.position.dy,
-      child: GestureDetector(
-        onTap: () {
-          viewModel.selectItem(widget.item.id);
-        },
-        onScaleStart: (details) {
-          viewModel.selectItem(widget.item.id);
-          _baseScale = widget.item.scale;
-          _baseRotation = widget.item.rotation;
-          _basePosition = widget.item.position;
-        },
-        onScaleUpdate: (details) {
-          final newScale = (_baseScale * details.scale).clamp(0.1, 10.0);
-          final newRotation = _baseRotation + details.rotation;
-          final newPosition = _basePosition + details.focalPoint - details.localFocalPoint;
+      child: Transform.rotate(
+        angle: widget.item.rotation,
+        child: Transform.scale(
+          scale: widget.item.scale,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  viewModel.selectItem(widget.item.id);
+                },
+                onScaleStart: (details) {
+                  viewModel.selectItem(widget.item.id);
+                  _startScale = widget.item.scale;
+                  _startRotation = widget.item.rotation;
+                },
+                onScaleUpdate: (details) {
+                  final newScale = (_startScale! * details.scale).clamp(0.1, 10.0);
+                  final newRotation = _startRotation! + details.rotation;
+                  final newPosition = widget.item.position + details.focalPointDelta;
 
-          // Update position taking into account pan delta.
-          // Wait, focalPointDelta is easier.
-          final currentPos = widget.item.position;
-          
-          final newItem = widget.item.copyWith(
-            scale: newScale,
-            rotation: newRotation,
-            position: currentPos + details.focalPointDelta,
-          );
-          viewModel.updateSelectedItem(newItem);
-        },
-        onScaleEnd: (details) {
-          viewModel.commitChanges();
-        },
-        child: Transform.rotate(
-          angle: widget.item.rotation,
-          child: Transform.scale(
-            scale: widget.item.scale,
-            child: Container(
-              padding: const EdgeInsets.all(4.0),
-              decoration: BoxDecoration(
-                border: widget.isSelected
-                    ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2 / widget.item.scale)
-                    : Border.all(color: Colors.transparent, width: 2 / widget.item.scale),
+                  viewModel.updateSelectedItem(widget.item.copyWith(
+                    scale: newScale,
+                    rotation: newRotation,
+                    position: newPosition,
+                  ));
+                },
+                onScaleEnd: (details) {
+                  viewModel.commitChanges();
+                  _startScale = null;
+                  _startRotation = null;
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    border: widget.isSelected
+                        ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2 / widget.item.scale)
+                        : Border.all(color: Colors.transparent, width: 2 / widget.item.scale),
+                  ),
+                  child: Opacity(
+                    opacity: widget.item.opacity,
+                    child: widget.item.isText ? _buildText() : _buildImage(),
+                  ),
+                ),
               ),
-              child: Opacity(
-                opacity: widget.item.opacity,
-                child: widget.item.isText ? _buildText() : _buildImage(),
-              ),
-            ),
+              if (widget.isSelected)
+                Positioned(
+                  right: -12 / widget.item.scale,
+                  bottom: -12 / widget.item.scale,
+                  child: GestureDetector(
+                    onPanStart: (details) {
+                      _startScale = widget.item.scale;
+                    },
+                    onPanUpdate: (details) {
+                      final newScale = (widget.item.scale + (details.delta.dy + details.delta.dx) * 0.01).clamp(0.1, 10.0);
+                      viewModel.updateSelectedItem(widget.item.copyWith(scale: newScale));
+                    },
+                    onPanEnd: (_) => viewModel.commitChanges(),
+                    child: Transform.scale(
+                      scale: 1 / widget.item.scale, // Keep handle same visual size
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              if (widget.isSelected)
+                Positioned(
+                  left: -12 / widget.item.scale,
+                  bottom: -12 / widget.item.scale,
+                  child: GestureDetector(
+                    onPanStart: (details) {
+                      _startRotation = widget.item.rotation;
+                    },
+                    onPanUpdate: (details) {
+                      final newRotation = widget.item.rotation + details.delta.dy * 0.02;
+                      viewModel.updateSelectedItem(widget.item.copyWith(rotation: newRotation));
+                    },
+                    onPanEnd: (_) => viewModel.commitChanges(),
+                    child: Transform.scale(
+                      scale: 1 / widget.item.scale,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.rotate_right, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -95,7 +149,6 @@ class _DraggableWatermarkState extends State<DraggableWatermark> {
         height: widget.item.lineHeight,
       );
     } catch (_) {
-      // Fallback
       style = TextStyle(
         fontFamily: widget.item.fontFamily,
         fontSize: widget.item.fontSize,
@@ -113,7 +166,7 @@ class _DraggableWatermarkState extends State<DraggableWatermark> {
           Shadow(
             offset: const Offset(2.0, 2.0),
             blurRadius: 3.0,
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
           ),
         ],
       );

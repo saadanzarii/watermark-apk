@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:screenshot/screenshot.dart';
+import 'package:toastification/toastification.dart';
 import '../../services/image_service.dart';
+import '../../services/history_service.dart';
 import '../../viewmodels/editor_viewmodel.dart';
 import '../widgets/editor/interactive_canvas.dart';
 import '../widgets/editor/control_panel.dart';
@@ -14,14 +15,14 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
-  final ScreenshotController _screenshotController = ScreenshotController();
   final ImageService _imageService = ImageService();
+  final HistoryService _historyService = HistoryService();
   bool _isExporting = false;
 
   void _exportImage(bool share) async {
     final viewModel = context.read<EditorViewModel>();
     
-    // Deselect before screenshot to remove bounding boxes
+    // Deselect before export to remove bounding boxes visually (though exportImage doesn't render them)
     viewModel.selectItem(null);
     
     setState(() {
@@ -29,27 +30,47 @@ class _EditorScreenState extends State<EditorScreen> {
     });
 
     try {
-      // Small delay to allow UI to update and remove selection borders
-      await Future.delayed(const Duration(milliseconds: 100));
-      
-      final imageBytes = await _screenshotController.capture(pixelRatio: 3.0); // High quality
+      if (viewModel.backgroundImage == null) return;
+
+      final imageBytes = await _imageService.exportImage(
+        viewModel.backgroundImage!,
+        viewModel.watermarkItems,
+        viewModel.canvasSize,
+      );
       
       if (imageBytes != null) {
         if (share) {
           await _imageService.shareImage(imageBytes);
         } else {
+          // Save to Local History
+          await _historyService.saveImageToLocalDirectory(imageBytes, viewModel.backgroundImage!.path);
+          // Save to Device Gallery
           final success = await _imageService.saveImageToGallery(imageBytes, context: context);
+          
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(success ? 'Saved to gallery!' : 'Failed to save.')),
+            toastification.show(
+              context: context,
+              title: const Text('Export Successful'),
+              description: Text(success ? 'Image saved to gallery and history.' : 'Image saved to history.'),
+              type: ToastificationType.success,
+              style: ToastificationStyle.flatColored,
+              autoCloseDuration: const Duration(seconds: 3),
+              alignment: Alignment.bottomCenter,
             );
+            Navigator.pop(context); // Return to home screen
           }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred during export.')),
+        toastification.show(
+          context: context,
+          title: const Text('Export Failed'),
+          description: const Text('An error occurred during export.'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          autoCloseDuration: const Duration(seconds: 3),
+          alignment: Alignment.bottomCenter,
         );
       }
     } finally {
@@ -104,10 +125,8 @@ class _EditorScreenState extends State<EditorScreen> {
         children: [
           Column(
             children: [
-              Expanded(
-                child: InteractiveCanvas(
-                  screenshotController: _screenshotController,
-                ),
+              const Expanded(
+                child: InteractiveCanvas(),
               ),
               const Divider(height: 1),
               _buildBottomToolbar(context),
@@ -117,9 +136,9 @@ class _EditorScreenState extends State<EditorScreen> {
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     height: viewModel.selectedItemId != null ? 300 : 0,
-                    child: SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: const ControlPanel(),
+                    child: const SingleChildScrollView(
+                      physics: NeverScrollableScrollPhysics(),
+                      child: ControlPanel(),
                     ),
                   );
                 },

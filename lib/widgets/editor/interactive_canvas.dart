@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:screenshot/screenshot.dart';
 import '../../viewmodels/editor_viewmodel.dart';
 import 'draggable_watermark.dart';
 
 class InteractiveCanvas extends StatelessWidget {
-  final ScreenshotController screenshotController;
-
-  const InteractiveCanvas({
-    super.key,
-    required this.screenshotController,
-  });
+  const InteractiveCanvas({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -26,42 +20,45 @@ class InteractiveCanvas extends StatelessWidget {
           );
         }
 
-        return GestureDetector(
-          onTap: () {
-            // Deselect item when tapping outside
-            viewModel.selectItem(null);
-          },
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: 1.0, // Default, will be updated to image aspect ratio if possible, or just wrap
-              child: Screenshot(
-                controller: screenshotController,
-                child: Container(
-                  color: Colors.transparent, // Ensure it's captured correctly
-                  child: Stack(
-                    fit: StackFit.expand,
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      // Background Image
-                      Image.file(
-                        viewModel.backgroundImage!,
-                        fit: BoxFit.contain,
-                      ),
-                      
-                      // Watermarks
-                      ...viewModel.watermarkItems.map((item) {
-                        return DraggableWatermark(
-                          key: ValueKey(item.id),
-                          item: item,
-                          isSelected: item.id == viewModel.selectedItemId,
-                        );
-                      }),
-                    ],
-                  ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Store canvas size in viewmodel for precise export mapping
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              viewModel.setCanvasSize(Size(constraints.maxWidth, constraints.maxHeight));
+            });
+
+            return GestureDetector(
+              onTap: () {
+                // Deselect item when tapping outside
+                viewModel.selectItem(null);
+              },
+              child: Container(
+                color: Colors.transparent,
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    // Background Image
+                    Image.file(
+                      viewModel.backgroundImage!,
+                      fit: BoxFit.contain,
+                    ),
+                    
+                    // Watermarks
+                    ...viewModel.watermarkItems.map((item) {
+                      return DraggableWatermark(
+                        key: ValueKey(item.id),
+                        item: item,
+                        isSelected: item.id == viewModel.selectedItemId,
+                      );
+                    }),
+                  ],
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

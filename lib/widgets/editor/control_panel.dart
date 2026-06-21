@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../viewmodels/editor_viewmodel.dart';
 import '../common/custom_slider.dart';
 
@@ -14,10 +15,55 @@ class ControlPanel extends StatefulWidget {
 class _ControlPanelState extends State<ControlPanel> {
   final _textController = TextEditingController();
 
+  final List<String> _popularFonts = [
+    'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald',
+    'Raleway', 'Merriweather', 'Nunito', 'Playfair Display',
+    'Ubuntu', 'Poppins', 'Inter', 'Dancing Script', 'Pacifico'
+  ];
+
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
+  }
+
+  void _showFontPicker(BuildContext context, EditorViewModel viewModel) {
+    final item = viewModel.selectedItem;
+    if (item == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Select Font', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _popularFonts.length,
+                itemBuilder: (context, index) {
+                  final font = _popularFonts[index];
+                  return ListTile(
+                    title: Text(
+                      font,
+                      style: GoogleFonts.getFont(font, fontSize: 18),
+                    ),
+                    trailing: item.fontFamily == font ? const Icon(Icons.check, color: Colors.blue) : null,
+                    onTap: () {
+                      viewModel.updateSelectedItem(item.copyWith(fontFamily: font));
+                      viewModel.commitChanges();
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -36,7 +82,6 @@ class _ControlPanelState extends State<ControlPanel> {
         }
 
         if (item.isText && _textController.text != item.text) {
-          // Keep text controller in sync without causing cursor jumps
           _textController.text = item.text;
           _textController.selection = TextSelection.fromPosition(TextPosition(offset: _textController.text.length));
         }
@@ -47,7 +92,7 @@ class _ControlPanelState extends State<ControlPanel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: TabBar(
                   isScrollable: true,
                   tabs: [
@@ -62,7 +107,7 @@ class _ControlPanelState extends State<ControlPanel> {
                 height: 250,
                 child: TabBarView(
                   children: [
-                    if (item.isText) _buildTextTab(viewModel),
+                    if (item.isText) _buildTextTab(viewModel, context),
                     if (item.isText) _buildStyleTab(viewModel),
                     _buildAdjustTab(viewModel),
                     if (item.isText) _buildColorTab(viewModel, context),
@@ -76,7 +121,7 @@ class _ControlPanelState extends State<ControlPanel> {
     );
   }
 
-  Widget _buildTextTab(EditorViewModel viewModel) {
+  Widget _buildTextTab(EditorViewModel viewModel, BuildContext context) {
     final item = viewModel.selectedItem!;
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -111,6 +156,11 @@ class _ControlPanelState extends State<ControlPanel> {
                 color: item.textAlign == TextAlign.right ? Theme.of(context).colorScheme.primary : null,
                 onPressed: () => viewModel.updateSelectedItem(item.copyWith(textAlign: TextAlign.right)),
               ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.font_download),
+                label: Text(item.fontFamily),
+                onPressed: () => _showFontPicker(context, viewModel),
+              ),
             ],
           ),
         ],
@@ -136,7 +186,7 @@ class _ControlPanelState extends State<ControlPanel> {
               children: const [
                 Icon(Icons.format_bold),
                 Icon(Icons.format_italic),
-                Icon(Icons.text_format), // Shadow icon proxy
+                Icon(Icons.text_format),
               ],
             ),
           ],
@@ -204,57 +254,26 @@ class _ControlPanelState extends State<ControlPanel> {
 
   Widget _buildColorTab(EditorViewModel viewModel, BuildContext context) {
     final item = viewModel.selectedItem!;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: item.color,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey),
-                ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      Color pickerColor = item.color;
-                      return AlertDialog(
-                        title: const Text('Pick a color!'),
-                        content: SingleChildScrollView(
-                          child: ColorPicker(
-                            pickerColor: pickerColor,
-                            onColorChanged: (color) {
-                              pickerColor = color;
-                            },
-                          ),
-                        ),
-                        actions: <Widget>[
-                          ElevatedButton(
-                            child: const Text('Got it'),
-                            onPressed: () {
-                              viewModel.updateSelectedItem(item.copyWith(color: pickerColor));
-                              viewModel.commitChanges();
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                child: const Text('Pick Color'),
-              ),
-            ],
-          ),
-        ],
+      child: ColorPicker(
+        color: item.color,
+        onColorChanged: (Color color) {
+          viewModel.updateSelectedItem(item.copyWith(color: color));
+        },
+        onColorChangeEnd: (Color color) {
+          viewModel.commitChanges();
+        },
+        heading: Text('Select color', style: Theme.of(context).textTheme.titleMedium),
+        subheading: Text('Select color shade', style: Theme.of(context).textTheme.titleMedium),
+        pickersEnabled: const <ColorPickerType, bool>{
+          ColorPickerType.both: false,
+          ColorPickerType.primary: true,
+          ColorPickerType.accent: true,
+          ColorPickerType.bw: false,
+          ColorPickerType.custom: true,
+          ColorPickerType.wheel: true,
+        },
       ),
     );
   }
