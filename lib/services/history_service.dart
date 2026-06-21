@@ -68,4 +68,16 @@ class HistoryService {
     await saveToHistory(newPath);
     return newPath;
   }
+
+  Future<void> deleteFromHistory(String path) async {
+    try {
+      final history = await loadHistory();
+      history.removeWhere((item) => item.path == path);
+      final file = await _localFile;
+      final jsonList = history.map((e) => e.toJson()).toList();
+      await file.writeAsString(jsonEncode(jsonList));
+    } catch (e) {
+      debugPrint("Error deleting from history: $e");
+    }
+  }
 }

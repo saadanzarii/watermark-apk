@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../viewmodels/editor_viewmodel.dart';
+import '../../models/watermark_item.dart';
 import '../common/custom_slider.dart';
 
 class ControlPanel extends StatefulWidget {
@@ -33,12 +34,15 @@ class _ControlPanelState extends State<ControlPanel> {
 
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Select Font', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Select Font', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             ),
             Expanded(
               child: ListView.builder(
@@ -87,7 +91,7 @@ class _ControlPanelState extends State<ControlPanel> {
         }
 
         return DefaultTabController(
-          length: item.isText ? 4 : 2,
+          length: item.isText ? 5 : 3,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -99,6 +103,7 @@ class _ControlPanelState extends State<ControlPanel> {
                     if (item.isText) const Tab(text: 'Text'),
                     if (item.isText) const Tab(text: 'Style'),
                     const Tab(text: 'Adjust'),
+                    const Tab(text: 'Pattern'),
                     if (item.isText) const Tab(text: 'Color'),
                   ],
                 ),
@@ -110,6 +115,7 @@ class _ControlPanelState extends State<ControlPanel> {
                     if (item.isText) _buildTextTab(viewModel, context),
                     if (item.isText) _buildStyleTab(viewModel),
                     _buildAdjustTab(viewModel),
+                    _buildPatternTab(viewModel),
                     if (item.isText) _buildColorTab(viewModel, context),
                   ],
                 ),
@@ -248,6 +254,49 @@ class _ControlPanelState extends State<ControlPanel> {
           onChanged: (val) => viewModel.updateSelectedItem(item.copyWith(rotation: val)),
           onChangeEnd: () => viewModel.commitChanges(),
         ),
+      ],
+    );
+  }
+
+  Widget _buildPatternTab(EditorViewModel viewModel) {
+    final item = viewModel.selectedItem!;
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: SegmentedButton<PatternType>(
+            segments: const [
+              ButtonSegment(value: PatternType.single, label: Text('Single'), icon: Icon(Icons.crop_square)),
+              ButtonSegment(value: PatternType.grid, label: Text('Grid'), icon: Icon(Icons.grid_on)),
+              ButtonSegment(value: PatternType.staggered, label: Text('Staggered'), icon: Icon(Icons.pattern)),
+            ],
+            selected: {item.patternType},
+            onSelectionChanged: (Set<PatternType> newSelection) {
+              viewModel.updateSelectedItem(item.copyWith(patternType: newSelection.first));
+              viewModel.commitChanges();
+            },
+          ),
+        ),
+        if (item.patternType != PatternType.single) ...[
+          const SizedBox(height: 16),
+          CustomSlider(
+            label: 'X Spacing',
+            value: item.patternSpacingX,
+            min: 0,
+            max: 200,
+            onChanged: (val) => viewModel.updateSelectedItem(item.copyWith(patternSpacingX: val)),
+            onChangeEnd: () => viewModel.commitChanges(),
+          ),
+          CustomSlider(
+            label: 'Y Spacing',
+            value: item.patternSpacingY,
+            min: 0,
+            max: 200,
+            onChanged: (val) => viewModel.updateSelectedItem(item.copyWith(patternSpacingY: val)),
+            onChangeEnd: () => viewModel.commitChanges(),
+          ),
+        ],
       ],
     );
   }

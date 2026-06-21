@@ -119,6 +119,21 @@ class EditorViewModel extends ChangeNotifier {
     }
   }
 
+  void duplicateSelectedItem() {
+    final item = selectedItem;
+    if (item != null) {
+      _saveHistory();
+      final id = const Uuid().v4();
+      final newItem = item.copyWith(
+        id: id,
+        position: item.position + const Offset(20, 20),
+      );
+      _watermarkItems.add(newItem);
+      _selectedItemId = id;
+      notifyListeners();
+    }
+  }
+
   void updateSelectedItem(WatermarkItem newItem) {
     final index = _watermarkItems.indexWhere((item) => item.id == newItem.id);
     if (index != -1) {

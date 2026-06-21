@@ -71,7 +71,7 @@ class _DraggableWatermarkState extends State<DraggableWatermark> {
                   ),
                   child: Opacity(
                     opacity: widget.item.opacity,
-                    child: widget.item.isText ? _buildText() : _buildImage(),
+                    child: _buildPatternContent(),
                   ),
                 ),
               ),
@@ -133,6 +133,40 @@ class _DraggableWatermarkState extends State<DraggableWatermark> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPatternContent() {
+    final singleItem = widget.item.isText ? _buildText() : _buildImage();
+    if (widget.item.patternType == PatternType.single) {
+      return singleItem;
+    }
+
+    // Grid or Staggered
+    int rows = 8;
+    int cols = 8;
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: List.generate(rows, (r) {
+        bool isStaggered = widget.item.patternType == PatternType.staggered && r % 2 != 0;
+        return Padding(
+          padding: EdgeInsets.only(bottom: widget.item.patternSpacingY),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isStaggered) SizedBox(width: widget.item.patternSpacingX / 2),
+              ...List.generate(cols, (c) {
+                return Padding(
+                  padding: EdgeInsets.only(right: widget.item.patternSpacingX),
+                  child: singleItem,
+                );
+              }),
+            ],
+          ),
+        );
+      }),
     );
   }
 

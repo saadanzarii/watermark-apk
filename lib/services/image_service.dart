@@ -202,17 +202,49 @@ class ImageService {
     );
 
     textPainter.layout();
-    
-    // Create a transparent background bounding box
-    final width = textPainter.width;
-    final height = textPainter.height;
-    
-    if (width == 0 || height == 0) return null;
 
-    textPainter.paint(canvas, Offset.zero);
+    double itemWidth = textPainter.width;
+    double itemHeight = textPainter.height;
+    double totalWidth = itemWidth;
+    double totalHeight = itemHeight;
+
+    if (item.patternType != PatternType.single) {
+      int rows = 8;
+      int cols = 8;
+      totalWidth = cols * itemWidth + (cols - 1) * item.patternSpacingX * scaleFactor;
+      if (item.patternType == PatternType.staggered) {
+        totalWidth += (item.patternSpacingX * scaleFactor) / 2;
+      }
+      totalHeight = rows * itemHeight + (rows - 1) * item.patternSpacingY * scaleFactor;
+    }
+
+    if (item.patternType == PatternType.single) {
+      textPainter.paint(canvas, Offset.zero);
+    } else {
+      int rows = 8;
+      int cols = 8;
+      for (int r = 0; r < rows; r++) {
+        double startX = (item.patternType == PatternType.staggered && r % 2 != 0) 
+            ? (item.patternSpacingX * scaleFactor) / 2 
+            : 0.0;
+        for (int c = 0; c < cols; c++) {
+          textPainter.paint(
+            canvas, 
+            Offset(
+              startX + c * (itemWidth + item.patternSpacingX * scaleFactor), 
+              r * (itemHeight + item.patternSpacingY * scaleFactor)
+            )
+          );
+        }
+      }
+    }
 
     final picture = recorder.endRecording();
-    final img = await picture.toImage(width.toInt(), height.toInt());
+    // Ensure dimensions are positive
+    if (totalWidth <= 0 || totalHeight <= 0) {
+      return null;
+    }
+    final img = await picture.toImage(totalWidth.ceil(), totalHeight.ceil());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     return byteData?.buffer.asUint8List();
   }

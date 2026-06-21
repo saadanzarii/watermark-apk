@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+enum PatternType {
+  single,
+  grid,
+  staggered,
+}
+
 class WatermarkItem {
   final String id;
   
@@ -25,6 +31,11 @@ class WatermarkItem {
   bool hasShadow;
   TextAlign textAlign;
 
+  // Pattern settings
+  PatternType patternType;
+  double patternSpacingX;
+  double patternSpacingY;
+
   WatermarkItem({
     required this.id,
     required this.isText,
@@ -43,6 +54,9 @@ class WatermarkItem {
     this.isItalic = false,
     this.hasShadow = false,
     this.textAlign = TextAlign.center,
+    this.patternType = PatternType.single,
+    this.patternSpacingX = 50.0,
+    this.patternSpacingY = 50.0,
   });
 
   WatermarkItem copyWith({
@@ -63,6 +77,9 @@ class WatermarkItem {
     bool? isItalic,
     bool? hasShadow,
     TextAlign? textAlign,
+    PatternType? patternType,
+    double? patternSpacingX,
+    double? patternSpacingY,
   }) {
     return WatermarkItem(
       id: id ?? this.id,
@@ -82,6 +99,9 @@ class WatermarkItem {
       isItalic: isItalic ?? this.isItalic,
       hasShadow: hasShadow ?? this.hasShadow,
       textAlign: textAlign ?? this.textAlign,
+      patternType: patternType ?? this.patternType,
+      patternSpacingX: patternSpacingX ?? this.patternSpacingX,
+      patternSpacingY: patternSpacingY ?? this.patternSpacingY,
     );
   }
 }

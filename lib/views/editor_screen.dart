@@ -175,11 +175,24 @@ class _EditorScreenState extends State<EditorScreen> {
             label: const Text('Add Image'),
             onPressed: _pickImageWatermark,
           ),
-          if (viewModel.selectedItemId != null)
+          if (viewModel.selectedItemId != null) ...[
+            IconButton(
+              icon: const Icon(Icons.copy, color: Colors.blue),
+              onPressed: () {
+                viewModel.duplicateSelectedItem();
+                toastification.show(
+                  context: context,
+                  title: const Text('Watermark duplicated'),
+                  type: ToastificationType.info,
+                  autoCloseDuration: const Duration(seconds: 2),
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => viewModel.removeSelectedItem(),
             ),
+          ]
         ],
       ),
     );
